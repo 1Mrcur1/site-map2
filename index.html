@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Leaflet Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <style>
+        body, html {
+            height: 100%;
+            margin: 0;
+        }
+        .select-cursor {
+            cursor: crosshair;
+        }
+        #map {
+            width: 100%;
+            height: calc(100% - 100px); /* Adjust height to leave more space for the button and labels */
+            min-height: 500px; /* Set minimum height */
+            min-width: 500px; /* Set minimum width */
+            background-color: #a0ccd5; /* Set background color */
+        }
+        #labels {
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: white;
+            padding: 5px 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column; /* Change to column layout */
+            gap: 5px; /* Adjust gap between labels */
+        }
+        #selectButton {
+            position: fixed;
+            bottom: 90px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <button id="selectButton">Select Location</button>
+    <div id="labels">
+        <div id="countryLabel">Country: </div>
+        <div id="cityLabel">City: </div>
+    </div>
+    <script>
+        // Initialize the map
+        var map = L.map('map', {
+            center: [20, 0],
+            zoom: 2,
+            minZoom: 2, // Set minZoom to the initial zoom level
+            maxBounds: [
+                [-90, -180],
+                [90, 180]
+            ],
+            maxBoundsViscosity: 1.0
+        });
+
+        // Add OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors',
+            noWrap: true
+        }).addTo(map);
+
+        var selectMode = false;
+
+        // Add a button to interact with the map
+        var selectButton = document.getElementById('selectButton');
+        selectButton.addEventListener('click', function() {
+            selectMode = !selectMode;
+            if (selectMode) {
+                map.getContainer().classList.add('select-cursor');
+            } else {
+                map.getContainer().classList.remove('select-cursor');
+            }
+        });
+
+        // Handle map click event
+        map.on('click', function(e) {
+            if (selectMode) {
+                // Use a geocoding service to get the country and city name
+                var latlng = e.latlng;
+                var url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latlng.lat}&lon=${latlng.lng}&zoom=14&addressdetails=1`;
+
+                fetch(url, {
+                    headers: {
+                        'Accept-Language': 'en'
+                    }
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        var country = data.address.country || 'Unknown Country';
+                        var city = data.address.city || data.address.town || data.address.village || data.display_name || 'Unknown City';
+                        document.getElementById('countryLabel').innerText = `Country: ${country}`;
+                        document.getElementById('cityLabel').innerText = `City: ${city}`;
+                    })
+                    .catch(error => {
+                        console.error('Error fetching location data:', error);
+                        document.getElementById('countryLabel').innerText = 'Error fetching location data';
+                        document.getElementById('cityLabel').innerText = 'Error fetching location data';
+                    });
+
+                // Exit select mode
+                selectMode = false;
+                map.getContainer().classList.remove('select-cursor');
+            }
+        });
+    </script>
+</body>
+</html>
